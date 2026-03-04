@@ -2,21 +2,12 @@
 ===============================================================================
 BASE STATION - Rescue Control Center
 ===============================================================================
-This program acts as the final receiver in the emergency mesh network.
-It collects all messages relayed through drone nodes and displays them
-for rescue coordinators.
-
-FEATURES:
-- Receives messages from the last hop drone node
-- Displays messages in a formatted table
-- Saves all messages to messages.json file
-- Does NOT forward messages further (final destination)
+Receives all relayed emergency messages from drone nodes.
 
 HOW TO RUN:
-1. Run this program FIRST before starting nodes
-2. Run: python base_station.py
-3. The base station will listen for incoming messages
-4. All received messages are displayed and saved to messages.json
+1. Run this FIRST on the Base Station machine (any OS).
+2. It will print this machine's IP — share that IP with the Node 1 operator.
+3. python base_station.py
 
 AUTHOR: College Project - Emergency Communication Network
 ===============================================================================
@@ -31,39 +22,40 @@ from datetime import datetime
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-BASE_STATION_PORT = 5000  # Port for base station
-BASE_STATION_IP = "0.0.0.0"  # Listen on all interfaces
-MESSAGES_FILE = "messages.json"  # File to store received messages
+BASE_STATION_PORT = 5000        # Port this station listens on
+BASE_STATION_IP   = "0.0.0.0"  # Listen on all network interfaces
+MESSAGES_FILE     = "messages.json"
 
 # ============================================================================
 # GLOBAL VARIABLES
 # ============================================================================
-received_messages = []  # List to store all received messages
-message_count = 0  # Counter for received messages
-lock = threading.Lock()  # Thread lock for safe file operations
+received_messages = []
+message_count     = 0
+lock              = threading.Lock()
+
+# ============================================================================
+# HELPER: detect own LAN IP
+# ============================================================================
+def get_my_ip():
+    """Returns this machine's LAN IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
 def log_message(log_type, message):
-    """
-    Prints formatted log messages with timestamp
-    
-    Parameters:
-        log_type (str): Type of log (INFO, SUCCESS, ERROR, WARNING)
-        message (str): Log message content
-    """
     timestamp = datetime.now().strftime("%H:%M:%S")
     print(f"[{timestamp}] [{log_type}] {message}")
 
 def load_existing_messages():
-    """
-    Loads existing messages from the JSON file if it exists
-    
-    Returns:
-        list: List of previously saved messages
-    """
     if os.path.exists(MESSAGES_FILE):
         try:
             with open(MESSAGES_FILE, 'r') as f:
@@ -72,40 +64,19 @@ def load_existing_messages():
                 return messages
         except Exception as e:
             log_message("WARNING", f"Could not load existing messages: {e}")
-            return []
     return []
 
 def save_message_to_file(message):
-    """
-    Saves a message to the messages.json file
-    Thread-safe operation using lock
-    
-    Parameters:
-        message (dict): Message to save
-    """
     with lock:
         try:
-            # Add to in-memory list
             received_messages.append(message)
-            
-            # Write to file (overwrites with complete list)
             with open(MESSAGES_FILE, 'w') as f:
                 json.dump(received_messages, f, indent=4)
-            
             log_message("SUCCESS", f"Message saved to {MESSAGES_FILE}")
-            
         except Exception as e:
             log_message("ERROR", f"Failed to save message: {e}")
 
 def display_message_table(message, msg_number):
-    """
-    Displays a message in a formatted table view
-    
-    Parameters:
-        message (dict): Message dictionary
-        msg_number (int): Sequential message number
-    """
-    # Priority color coding for display
     priority = message.get('priority', 'MEDIUM')
     if priority == 'HIGH':
         priority_display = f"{priority} ⚠️"
@@ -113,7 +84,7 @@ def display_message_table(message, msg_number):
         priority_display = f"{priority} ⚡"
     else:
         priority_display = f"{priority} ℹ️"
-    
+
     print("\n" + "═" * 80)
     print(f"{'MESSAGE #' + str(msg_number):^80}")
     print("═" * 80)
@@ -127,14 +98,11 @@ def display_message_table(message, msg_number):
     print("├" + "─" * 21 + "┴" + "─" * 55 + "┤")
     print(f"│ {'MESSAGE CONTENT':<78} │")
     print("├" + "─" * 79 + "┤")
-    
-    # Word wrap for long messages
+
     message_text = message.get('message_text', 'N/A')
     max_width = 76
     words = message_text.split()
-    lines = []
-    current_line = ""
-    
+    lines, current_line = [], ""
     for word in words:
         if len(current_line) + len(word) + 1 <= max_width:
             current_line += word + " "
@@ -143,24 +111,16 @@ def display_message_table(message, msg_number):
             current_line = word + " "
     if current_line:
         lines.append(current_line.strip())
-    
     for line in lines:
         print(f"│ {line:<77} │")
-    
     print("└" + "─" * 79 + "┘")
 
 def display_statistics():
-    """
-    Displays statistics about received messages
-    """
     if not received_messages:
         return
-    
-    # Count by priority
-    high_count = sum(1 for m in received_messages if m.get('priority') == 'HIGH')
+    high_count   = sum(1 for m in received_messages if m.get('priority') == 'HIGH')
     medium_count = sum(1 for m in received_messages if m.get('priority') == 'MEDIUM')
-    low_count = sum(1 for m in received_messages if m.get('priority') == 'LOW')
-    
+    low_count    = sum(1 for m in received_messages if m.get('priority') == 'LOW')
     print("\n" + "─" * 80)
     print("STATISTICS:")
     print("─" * 80)
@@ -171,45 +131,22 @@ def display_statistics():
     print("─" * 80 + "\n")
 
 # ============================================================================
-# MESSAGE HANDLING FUNCTIONS
+# MESSAGE HANDLING
 # ============================================================================
 
 def handle_incoming_message(client_socket, client_address):
-    """
-    Handles an incoming message from a drone node
-    
-    Parameters:
-        client_socket: Socket object for the connection
-        client_address: Address tuple (IP, port) of sender
-    """
     global message_count
-    
     try:
-        # Receive data
         data = client_socket.recv(4096).decode('utf-8')
-        
         if not data:
             return
-        
-        # Parse JSON message
         message = json.loads(data)
-        
         log_message("INFO", f"Message received from drone node at {client_address[0]}:{client_address[1]}")
-        
-        # Increment message counter
         message_count += 1
-        
-        # Display the message
         display_message_table(message, message_count)
-        
-        # Save to file
         save_message_to_file(message)
-        
-        # Display statistics
         display_statistics()
-        
         log_message("SUCCESS", f"Message #{message_count} processed successfully")
-        
     except json.JSONDecodeError:
         log_message("ERROR", "Invalid JSON format received")
     except Exception as e:
@@ -218,52 +155,49 @@ def handle_incoming_message(client_socket, client_address):
         client_socket.close()
 
 # ============================================================================
-# SERVER FUNCTIONS
+# SERVER
 # ============================================================================
 
 def start_base_station():
-    """
-    Starts the base station server to listen for incoming messages
-    """
     global received_messages
-    
-    # Load existing messages
     received_messages = load_existing_messages()
-    
+
+    my_ip = get_my_ip()
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    
+
     try:
         server_socket.bind((BASE_STATION_IP, BASE_STATION_PORT))
         server_socket.listen(5)
-        
+
         print("\n" + "╔" + "═" * 78 + "╗")
         print("║" + " " * 15 + "EMERGENCY COMMUNICATION NETWORK - BASE STATION" + " " * 16 + "║")
         print("║" + " " * 20 + "Rescue Control Center" + " " * 36 + "║")
         print("╚" + "═" * 78 + "╝\n")
-        
-        log_message("SUCCESS", f"Base station listening on port {BASE_STATION_PORT}")
-        log_message("INFO", f"Messages will be saved to: {MESSAGES_FILE}")
-        
-        print("\n" + "─" * 80)
+
+        print("  ✅  BASE STATION IS RUNNING")
+        print(f"  📡  This machine's IP : {my_ip}")
+        print(f"  🔌  Listening on port : {BASE_STATION_PORT}")
+        print()
+        print("  👉  Share this IP with the person running node1.py")
+        print("       They will enter it when prompted.")
+        print()
+        print("─" * 80)
         print("Waiting for emergency messages from drone network...")
         print("─" * 80 + "\n")
-        
+
         while True:
-            # Accept incoming connections
             client_socket, client_address = server_socket.accept()
-            
-            # Handle each connection in a new thread
             client_thread = threading.Thread(
                 target=handle_incoming_message,
                 args=(client_socket, client_address)
             )
             client_thread.daemon = True
             client_thread.start()
-            
-    except OSError as e:
-        log_message("ERROR", f"Port {BASE_STATION_PORT} is already in use!")
-        log_message("ERROR", "Please close the existing program or use a different port.")
+
+    except OSError:
+        log_message("ERROR", f"Port {BASE_STATION_PORT} is already in use! Close any other instance first.")
         return
     except KeyboardInterrupt:
         print("\n")
@@ -278,13 +212,10 @@ def start_base_station():
         log_message("INFO", "Server socket closed")
 
 # ============================================================================
-# MAIN FUNCTION
+# MAIN
 # ============================================================================
 
 def main():
-    """
-    Main function to start the base station
-    """
     start_base_station()
 
 if __name__ == "__main__":

@@ -41,10 +41,7 @@ NODE_IP = "0.0.0.0"  # Listen on all interfaces
 # List of neighbor nodes this node can forward messages to
 # Format: (IP, PORT)
 # Update this list based on your network topology
-NEIGHBOR_NODES = [
-    ("127.0.0.1", 5002),  # Next hop node
-    ("127.0.0.1", 5000),  # Or directly to base station if in range
-]
+NEIGHBOR_NODES = []
 
 # Simulation parameters
 TRANSMISSION_DELAY = 1  # Seconds to simulate transmission time
@@ -329,6 +326,22 @@ def main():
     Main function to start the drone node
     Starts both the server and forwarding threads
     """
+    print("\n" + "=" * 70)
+    print(" " * 20 + "DRONE NODE - SETUP")
+    print("=" * 70)
+    print("This node forwards messages to the BASE STATION.")
+    print()
+
+    # Ask for Base Station IP
+    while True:
+        bs_ip = input("Enter the BASE STATION machine's IP address: ").strip()
+        if bs_ip:
+            break
+        print("[ERROR] IP cannot be empty. Try again.")
+
+    NEIGHBOR_NODES.append((bs_ip, 5000))
+    print(f"[OK] Will forward to Base Station at {bs_ip}:5000\n")
+
     # Start the message forwarding thread
     forwarding_thread = threading.Thread(target=forward_messages)
     forwarding_thread.daemon = True

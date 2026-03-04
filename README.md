@@ -1,44 +1,89 @@
-# Simulation of Emergency Communication Network Using Drone Nodes
+# SkyLink Rescue Network — Emergency Communication via Drone Nodes
 
 **College Project - Computer Networks**
 
 A Python-based mesh communication system where multiple laptops act as drone relay nodes in a disaster area where normal mobile networks are unavailable.
 
+> **No editing needed!** Every script now asks for the IP address at startup. Just run, type the IP, done.
+
 ---
 
 ## 📋 Project Overview
 
-This project simulates an emergency communication network with the following components:
+| Script | Role | Machine |
+|---|---|---|
+| `base_station.py` | Final receiver — Rescue Control Center | Mac (or any) |
+| `node1.py` | Drone relay node 1 | Windows Laptop 1 |
+| `node2.py` | Drone relay node 2 | Windows Laptop 2 |
+| `sender_client.py` | Victim device simulator | Any machine |
 
-- **Drone Nodes** (`node.py`) - Relay messages between victims and base station
-- **Base Station** (`base_station.py`) - Final receiver (rescue control center)
-- **Sender Client** (`sender_client.py`) - Victim's device sending emergency messages
+**Message flow:**
+```
+sender_client → node2 → node1 → base_station
+   (port 5002)  (port 5001)   (port 5000)
+```
 
 ---
 
 ## ✨ Key Features
 
-- ✅ **Multi-hop Message Forwarding** - Messages travel through multiple nodes
-- ✅ **Priority-based Transmission** - HIGH, MEDIUM, LOW priority levels
-- ✅ **Dynamic Routing** - Self-healing network (if one node fails, tries next)
-- ✅ **Message Deduplication** - Prevents processing the same message twice
-- ✅ **Real-time Display** - Shows messages in formatted tables
-- ✅ **Persistent Storage** - Saves all messages to `messages.json`
+- ✅ **Zero configuration** — IP addresses entered at runtime, no file editing
+- ✅ **Cross-platform** — Works on Windows, macOS, Linux
+- ✅ **Multi-hop Message Forwarding** — Messages travel through multiple nodes
+- ✅ **Priority-based Transmission** — HIGH, MEDIUM, LOW priority levels
+- ✅ **Dynamic Routing** — Self-healing network (if one node fails, tries next)
+- ✅ **Message Deduplication** — Prevents processing the same message twice
+- ✅ **Real-time Display** — Shows messages in formatted tables
+- ✅ **Persistent Storage** — Saves all messages to `messages.json`
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Multi-Machine Setup (3 Laptops)
 
-### Prerequisites
+> All machines must be on the **same WiFi network**.
 
-- Python 3.6 or higher
-- Multiple laptops/terminals connected to the same WiFi network
-- Basic knowledge of IP addresses and ports
+### Step 1 — Base Station (Mac or any machine)
+```bash
+python base_station.py
+```
+- It will print this machine's IP, e.g. `192.168.1.10`
+- ✏️ Tell the **Node 1 operator** this IP.
 
-### Installation
+### Step 2 — Node 1 (Windows Laptop 1)
+```bash
+python node1.py
+```
+- Enter the **Base Station's IP** when prompted.
+- It will print its own IP, e.g. `192.168.1.20`
+- ✏️ Tell the **Node 2 operator** this IP.
 
-1. **Clone or download** this project to each laptop
-2. **No external libraries required** - uses only Python standard library
+### Step 3 — Node 2 (Windows Laptop 2)
+```bash
+python node2.py
+```
+- Enter **Node 1's IP** when prompted.
+- It will print its own IP, e.g. `192.168.1.30`
+- ✏️ Tell the **Victim (sender) operator** this IP.
+
+### Step 4 — Sender / Victim (any machine)
+```bash
+python sender_client.py
+```
+- Enter **Node 2's IP** when prompted.
+- Fill in your name, location, message, and priority — hit send!
+
+---
+
+## 🖥️ Single Computer Testing (Localhost)
+
+Open 4 terminals and run each script. When asked for an IP, type `127.0.0.1`.
+
+---
+
+## Prerequisites
+
+- Python 3.6 or higher (no extra libraries needed)
+- All machines on the same WiFi network
 
 ---
 

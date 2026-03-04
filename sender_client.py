@@ -1,15 +1,16 @@
 """
 ===============================================================================
-SENDER CLIENT - Emergency Message Sender (Victim Device Simulator)
+SENDER CLIENT - Victim Device Simulator  (runs on Mac / any machine)
 ===============================================================================
-This program simulates a victim's device sending emergency messages
-to the mesh network.
+Simulates a victim sending an emergency message into the mesh network.
 
 HOW TO RUN:
-1. Make sure at least one node.py is running
-2. Update FIRST_NODE_IP and FIRST_NODE_PORT to match your first drone node
-3. Run: python sender_client.py
-4. Enter your details and send emergency messages
+1. Make sure node2.py is running on its machine.
+2. Run: python sender_client.py
+3. When prompted, enter Node 2's IP address.
+4. Fill in your details and send the message.
+
+CHAIN:  Victim (this script) → Node 2 → Node 1 → Base Station
 
 AUTHOR: College Project - Emergency Communication Network
 ===============================================================================
@@ -21,10 +22,14 @@ import uuid
 from datetime import datetime
 
 # ============================================================================
-# CONFIGURATION - Update these values based on your network setup
+# CONFIGURATION  (set at runtime - no editing needed)
 # ============================================================================
-FIRST_NODE_IP = "127.0.0.1"  # IP of first drone node (use actual IP in WiFi setup)
-FIRST_NODE_PORT = 5001       # Port of first drone node
+FIRST_NODE_IP   = None  # Will be asked at startup
+FIRST_NODE_PORT = 5002  # Node 2 always listens on 5002
+
+# ============================================================================
+# MESSAGE CREATION
+# ============================================================================
 
 def create_message(sender_name, location, message_text, priority):
     """
@@ -49,6 +54,10 @@ def create_message(sender_name, location, message_text, priority):
     }
     return message
 
+# ============================================================================
+# SEND
+# ============================================================================
+
 def send_message(message):
     """
     Sends the message to the first drone node in the mesh network
@@ -60,35 +69,33 @@ def send_message(message):
         bool: True if message sent successfully, False otherwise
     """
     try:
-        # Create a TCP socket
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.settimeout(5)  # 5 second timeout
-        
-        # Connect to the first node
-        print(f"\n[INFO] Connecting to first node at {FIRST_NODE_IP}:{FIRST_NODE_PORT}...")
+        client_socket.settimeout(5)
+
+        print(f"\n[INFO] Connecting to Node 2 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}...")
         client_socket.connect((FIRST_NODE_IP, FIRST_NODE_PORT))
-        
-        # Convert message to JSON and send
-        message_json = json.dumps(message)
-        client_socket.send(message_json.encode('utf-8'))
-        
+
+        client_socket.send(json.dumps(message).encode('utf-8'))
+
         print(f"[SUCCESS] Message sent successfully!")
         print(f"[INFO] Message ID: {message['message_id']}")
-        
-        # Close connection
         client_socket.close()
         return True
-        
+
     except ConnectionRefusedError:
-        print(f"[ERROR] Could not connect to node at {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
-        print("[ERROR] Make sure the first drone node is running!")
+        print(f"[ERROR] Could not connect to {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
+        print("[ERROR] Make sure node2.py is running on that machine!")
         return False
     except socket.timeout:
-        print("[ERROR] Connection timeout. Node may be unreachable.")
+        print("[ERROR] Connection timed out. Node may be unreachable.")
         return False
     except Exception as e:
         print(f"[ERROR] Failed to send message: {e}")
         return False
+
+# ============================================================================
+# UI HELPERS
+# ============================================================================
 
 def display_banner():
     """Displays the welcome banner"""
@@ -108,10 +115,8 @@ def get_priority_input():
     print("  1. HIGH   - Life-threatening emergency")
     print("  2. MEDIUM - Urgent but not critical")
     print("  3. LOW    - Information or non-urgent")
-    
     while True:
         choice = input("\nEnter choice (1/2/3): ").strip()
-        
         if choice == "1":
             return "HIGH"
         elif choice == "2":
@@ -121,41 +126,53 @@ def get_priority_input():
         else:
             print("[ERROR] Invalid choice. Please enter 1, 2, or 3.")
 
+# ============================================================================
+# MAIN
+# ============================================================================
+
 def main():
-    """Main function to run the sender client"""
+    global FIRST_NODE_IP
+
     display_banner()
-    
-    print(f"\n[CONFIG] First Node: {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
+
+    # Ask for Node 2 IP once at startup
+    print()
+    while True:
+        ip = input("Enter NODE 2 machine's IP address: ").strip()
+        if ip:
+            FIRST_NODE_IP = ip
+            break
+        print("[ERROR] IP cannot be empty. Try again.")
+
+    print(f"\n[OK] Will send messages to Node 2 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
     print("\nThis simulator allows you to send emergency messages")
     print("through the drone mesh network to the base station.\n")
-    
+
     while True:
         try:
             print("\n" + "-" * 70)
             print("Enter Emergency Message Details:")
             print("-" * 70)
-            
-            # Get user input
+
             sender_name = input("\nYour Name: ").strip()
             if not sender_name:
                 print("[ERROR] Name cannot be empty!")
                 continue
-            
+
             location = input("Your Location: ").strip()
             if not location:
                 print("[ERROR] Location cannot be empty!")
                 continue
-            
+
             message_text = input("Emergency Message: ").strip()
             if not message_text:
                 print("[ERROR] Message cannot be empty!")
                 continue
-            
+
             priority = get_priority_input()
-            
-            # Create and display the message
+
             message = create_message(sender_name, location, message_text, priority)
-            
+
             print("\n" + "=" * 70)
             print("MESSAGE PREVIEW:")
             print("=" * 70)
@@ -165,32 +182,27 @@ def main():
             print(f"Priority    : {message['priority']}")
             print(f"Timestamp   : {message['timestamp']}")
             print("=" * 70)
-            
-            # Confirm before sending
+
             confirm = input("\nSend this message? (y/n): ").strip().lower()
-            
+
             if confirm == 'y':
-                # Send the message
                 success = send_message(message)
-                
                 if success:
                     print("\n[SUCCESS] Your emergency message has been transmitted!")
-                    print("[INFO] The message will be relayed through drone nodes")
-                    print("[INFO] to reach the base station.\n")
+                    print("[INFO] It will be relayed through drone nodes to the base station.\n")
             else:
                 print("\n[CANCELLED] Message not sent.")
-            
-            # Ask if user wants to send another message
+
             another = input("\nSend another message? (y/n): ").strip().lower()
             if another != 'y':
                 print("\n[INFO] Exiting sender client. Stay safe!")
                 break
-                
+
         except KeyboardInterrupt:
-            print("\n\n[INFO] Program interrupted by user. Exiting...")
+            print("\n\n[INFO] Interrupted. Exiting...")
             break
         except Exception as e:
-            print(f"\n[ERROR] An unexpected error occurred: {e}")
+            print(f"\n[ERROR] Unexpected error: {e}")
             continue
 
 if __name__ == "__main__":
