@@ -22,7 +22,7 @@ from datetime import datetime
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-BASE_STATION_PORT = 5000        # Port this station listens on
+BASE_STATION_PORT = 5003        # Port this station listens on
 BASE_STATION_IP   = "0.0.0.0"  # Listen on all network interfaces
 MESSAGES_FILE     = "messages.json"
 
@@ -181,7 +181,7 @@ def start_base_station():
         print(f"  🔌  Listening on port : {BASE_STATION_PORT}")
         print()
         print("  👉  Share this IP with the person running node1.py")
-        print("       They will enter it when prompted.")
+        print("       They will enter it when prompted. (node1 → port 5003)")
         print()
         print("─" * 80)
         print("Waiting for emergency messages from drone network...")

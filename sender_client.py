@@ -5,12 +5,12 @@ SENDER CLIENT - Victim Device Simulator  (runs on Mac / any machine)
 Simulates a victim sending an emergency message into the mesh network.
 
 HOW TO RUN:
-1. Make sure node2.py is running on its machine.
+1. Make sure node1.py is running on its machine.
 2. Run: python sender_client.py
-3. When prompted, enter Node 2's IP address.
+3. When prompted, enter Node 1's IP address.
 4. Fill in your details and send the message.
 
-CHAIN:  Victim (this script) → Node 2 → Node 1 → Base Station
+CHAIN:  Victim (this script) --> Node 1 --> Base Station
 
 AUTHOR: College Project - Emergency Communication Network
 ===============================================================================
@@ -25,7 +25,7 @@ from datetime import datetime
 # CONFIGURATION  (set at runtime - no editing needed)
 # ============================================================================
 FIRST_NODE_IP   = None  # Will be asked at startup
-FIRST_NODE_PORT = 5002  # Node 2 always listens on 5002
+FIRST_NODE_PORT = 5001  # Node 1 listens on 5001
 
 # ============================================================================
 # MESSAGE CREATION
@@ -72,7 +72,7 @@ def send_message(message):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.settimeout(5)
 
-        print(f"\n[INFO] Connecting to Node 2 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}...")
+        print(f"\n[INFO] Connecting to Node 1 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}...")
         client_socket.connect((FIRST_NODE_IP, FIRST_NODE_PORT))
 
         client_socket.send(json.dumps(message).encode('utf-8'))
@@ -84,7 +84,7 @@ def send_message(message):
 
     except ConnectionRefusedError:
         print(f"[ERROR] Could not connect to {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
-        print("[ERROR] Make sure node2.py is running on that machine!")
+        print("[ERROR] Make sure node1.py is running on that machine!")
         return False
     except socket.timeout:
         print("[ERROR] Connection timed out. Node may be unreachable.")
@@ -138,13 +138,13 @@ def main():
     # Ask for Node 2 IP once at startup
     print()
     while True:
-        ip = input("Enter NODE 2 machine's IP address: ").strip()
+        ip = input("Enter NODE 1 machine's IP address: ").strip()
         if ip:
             FIRST_NODE_IP = ip
             break
         print("[ERROR] IP cannot be empty. Try again.")
 
-    print(f"\n[OK] Will send messages to Node 2 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
+    print(f"\n[OK] Will send messages to Node 1 at {FIRST_NODE_IP}:{FIRST_NODE_PORT}")
     print("\nThis simulator allows you to send emergency messages")
     print("through the drone mesh network to the base station.\n")
 
